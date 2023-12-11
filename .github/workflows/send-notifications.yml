@@ -1,0 +1,53 @@
+name: Send Notifications
+
+on:
+  # Activation manuelle
+  workflow_dispatch:
+  # S'activera le 25 décembre à 4h00 UTC
+#   schedule:
+#     - cron: "0 4 25 12 *"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "14"
+
+      - name: Send Email via SendGrid
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          EMAIL_TO: "destinataire@example.com"
+          EMAIL_FROM: "expediteur@example.com"
+          EMAIL_SUBJECT: "Notification de GitHub Actions"
+          EMAIL_TEXT: "Votre compteur est terminé!"
+        run: |
+          curl --request POST \
+          --url https://api.sendgrid.com/v3/mail/send \
+          --header "Authorization: Bearer $SENDGRID_API_KEY" \
+          --header 'Content-Type: application/json' \
+          --data '{
+            "personalizations": [{ "to": [{ "email": "'$EMAIL_TO'" }] }],
+            "from": { "email": "'$EMAIL_FROM'" },
+            "subject": "'$EMAIL_SUBJECT'",
+            "content": [{ "type": "text/plain", "value": "'$EMAIL_TEXT'" }]
+          }'
+
+      - name: Send SMS via Twilio
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_PHONE_NUMBER: "+1234567890" # Numéro de téléphone Twilio
+          PHONE_NUMBER_TO: "+19876543210" # Numéro de téléphone du destinataire
+          SMS_BODY: "Votre compteur est terminé!"
+        run: |
+          curl -X POST "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/Messages.json" \
+          --data-urlencode "To=$PHONE_NUMBER_TO" \
+          --data-urlencode "From=$TWILIO_PHONE_NUMBER" \
+          --data-urlencode "Body=$SMS_BODY" \
+          -u "$TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN"
